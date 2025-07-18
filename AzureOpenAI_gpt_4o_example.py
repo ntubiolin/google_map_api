@@ -53,15 +53,9 @@ tools = [
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Text query to search for places"},
-                    "location": {
-                        "type": "object",
-                        "properties": {
-                            "latitude": {"type": "number"},
-                            "longitude": {"type": "number"}
-                        },
-                        "required": ["latitude", "longitude"]
-                    },
-                    "radius": {"type": "number", "description": "Search radius in meters"}
+                    "latitude": {"type": "number", "description": "Latitude for location-based search (optional)"},
+                    "longitude": {"type": "number", "description": "Longitude for location-based search (optional)"},
+                    "radius": {"type": "integer", "description": "Search radius in meters (optional)"}
                 },
                 "required": ["query"]
             }
