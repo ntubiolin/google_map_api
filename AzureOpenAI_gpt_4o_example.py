@@ -15,107 +15,142 @@ GPT_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o")
 
 tools = [
     {
-        "name": "maps_geocode",
-        "description": "Convert address to geographic coordinates",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "address": {"type": "string", "description": "The address to geocode"}
-            },
-            "required": ["address"]
-        }
-    },
-    {
-        "name": "maps_reverse_geocode",
-        "description": "Convert coordinates to a human-readable address",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "latitude": {"type": "number"},
-                "longitude": {"type": "number"}
-            },
-            "required": ["latitude", "longitude"]
-        }
-    },
-    {
-        "name": "maps_search_places",
-        "description": "Search for places using a text query",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string"},
-                "location": {
-                    "type": "object",
-                    "properties": {
-                        "latitude": {"type": "number"},
-                        "longitude": {"type": "number"}
-                    }
+        "type": "function",
+        "function": {
+            "name": "maps_geocode",
+            "description": "Convert address to geographic coordinates",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "address": {"type": "string", "description": "The address to geocode"}
                 },
-                "radius": {"type": "integer"}
+                "required": ["address"]
             }
         }
     },
     {
-        "name": "maps_place_details",
-        "description": "Get detailed information about a place by its ID",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "place_id": {"type": "string"}
-            },
-            "required": ["place_id"]
+        "type": "function",
+        "function": {
+            "name": "maps_reverse_geocode",
+            "description": "Convert coordinates to a human-readable address",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "latitude": {"type": "number", "description": "Latitude of the location"},
+                    "longitude": {"type": "number", "description": "Longitude of the location"}
+                },
+                "required": ["latitude", "longitude"]
+            }
         }
     },
     {
-        "name": "maps_distance_matrix",
-        "description": "Calculate distances and times between points",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "origins": {"type": "array", "items": {"type": "string"}},
-                "destinations": {"type": "array", "items": {"type": "string"}},
-                "mode": {
-                    "type": "string",
-                    "enum": ["driving", "walking", "bicycling", "transit"]
-                }
-            },
-            "required": ["origins", "destinations"]
-        }
-    },
-    {
-        "name": "maps_elevation",
-        "description": "Get elevation data for locations",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "locations": {
-                    "type": "array",
-                    "items": {
+        "type": "function",
+        "function": {
+            "name": "maps_search_places",
+            "description": "Search for places using a text query",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Text query to search for places"},
+                    "location": {
                         "type": "object",
                         "properties": {
                             "latitude": {"type": "number"},
                             "longitude": {"type": "number"}
-                        }
-                    }
-                }
-            },
-            "required": ["locations"]
+                        },
+                        "required": ["latitude", "longitude"]
+                    },
+                    "radius": {"type": "number", "description": "Search radius in meters"}
+                },
+                "required": ["query"]
+            }
         }
     },
     {
-        "name": "maps_directions",
-        "description": "Get step-by-step directions between two points",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "origin": {"type": "string"},
-                "destination": {"type": "string"},
-                "mode": {
-                    "type": "string",
-                    "enum": ["driving", "walking", "bicycling", "transit"]
-                }
-            },
-            "required": ["origin", "destination"]
+        "type": "function",
+        "function": {
+            "name": "maps_place_details",
+            "description": "Get detailed information about a place",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "place_id": {"type": "string", "description": "The place ID"}
+                },
+                "required": ["place_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "maps_distance_matrix",
+            "description": "Calculate distances and times between points",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "origins": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of origin addresses"
+                    },
+                    "destinations": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of destination addresses"
+                    },
+                    "mode": {
+                        "type": "string",
+                        "enum": ["driving", "walking", "bicycling", "transit"],
+                        "description": "Mode of transportation"
+                    }
+                },
+                "required": ["origins", "destinations"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "maps_elevation",
+            "description": "Get elevation data for locations",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "locations": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "latitude": {"type": "number"},
+                                "longitude": {"type": "number"}
+                            },
+                            "required": ["latitude", "longitude"]
+                        },
+                        "description": "Array of location objects with latitude and longitude"
+                    }
+                },
+                "required": ["locations"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "maps_directions",
+            "description": "Get directions between points",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "origin": {"type": "string", "description": "Start address"},
+                    "destination": {"type": "string", "description": "End address"},
+                    "mode": {
+                        "type": "string",
+                        "enum": ["driving", "walking", "bicycling", "transit"],
+                        "description": "Mode of transportation"
+                    }
+                },
+                "required": ["origin", "destination"]
+            }
         }
     }
 ]
