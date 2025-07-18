@@ -1,4 +1,5 @@
 import os
+import json
 from dotenv import load_dotenv
 import maps_api
 from openai import AzureOpenAI
@@ -156,50 +157,89 @@ tools = [
 ]
 
 def ask_gpt_with_tool_call(question: str):
-    # 初次呼叫 GPT，讓它判斷是否要用工具
-    response = client.chat.completions.create(
-        model=GPT_DEPLOYMENT,
-        messages=[
-            {"role": "system", "content": "你是一個地圖助理，幫助使用者查詢地理資訊。"},
-            {"role": "user", "content": question}
-        ],
-        tools=tools,
-        tool_choice="auto"
-    )
-
-    choice = response.choices[0]
-    if not choice.message.tool_calls:
-        print("🤖 GPT 回答：", choice.message.content)
-        return
-
-    tool_call = choice.message.tool_calls[0]
-    tool_name = tool_call.function.name
-    tool_args = eval(tool_call.function.arguments)
-    tool_func = getattr(maps_api, tool_name)
-    tool_result = tool_func(**tool_args)
-
-    # 將工具結果回傳給 GPT 進行最後回答
-    followup = client.chat.completions.create(
-        model=GPT_DEPLOYMENT,
-        messages=[
-            {"role": "system", "content": "你是一個地圖助理，幫助使用者查詢地理資訊。"},
-            {"role": "user", "content": question},
-            {"role": "assistant", "tool_calls": [tool_call]},
-            {
-                "role": "tool",
-                "tool_call_id": tool_call.id,
-                "name": tool_name,
-                "content": str(tool_result)
-            }
-        ],
-        tools=tools
-    )
-
-    print("\n🧠 GPT 回答：\n", followup.choices[0].message.content)
+    # 初始化對話訊息
+    messages = [
+        {"role": "system", "content": "你是一個地圖助理，幫助使用者查詢地理資訊。"},
+        {"role": "user", "content": question}
+    ]
+    
+    max_iterations = 10  # 防止無限循環
+    iteration = 0
+    
+    while iteration < max_iterations:
+        iteration += 1
+        print(f"\n🔄 執行第 {iteration} 步...")
+        
+        # 呼叫 GPT
+        response = client.chat.completions.create(
+            model=GPT_DEPLOYMENT,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto"
+        )
+        
+        choice = response.choices[0]
+        
+        # 如果沒有工具呼叫，表示 GPT 已經可以回答了
+        if not choice.message.tool_calls:
+            print("🤖 GPT 回答：", choice.message.content)
+            return
+        
+        # 處理所有工具呼叫（GPT 可能同時呼叫多個工具）
+        tool_messages = []
+        assistant_message = {
+            "role": "assistant",
+            "tool_calls": choice.message.tool_calls
+        }
+        messages.append(assistant_message)
+        
+        for tool_call in choice.message.tool_calls:
+            tool_name = tool_call.function.name
+            try:
+                tool_args = json.loads(tool_call.function.arguments)
+            except json.JSONDecodeError:
+                print(f"❌ 無法解析工具參數：{tool_call.function.arguments}")
+                continue
+            
+            print(f"🔧 執行工具：{tool_name}")
+            print(f"📝 參數：{tool_args}")
+            
+            try:
+                tool_func = getattr(maps_api, tool_name)
+                tool_result = tool_func(**tool_args)
+                print(f"✅ 工具結果：{str(tool_result)[:200]}...")
+                
+                tool_message = {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_name,
+                    "content": str(tool_result)
+                }
+                tool_messages.append(tool_message)
+                
+            except Exception as e:
+                print(f"❌ 工具執行錯誤：{str(e)}")
+                tool_message = {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "name": tool_name,
+                    "content": f"錯誤：{str(e)}"
+                }
+                tool_messages.append(tool_message)
+        
+        # 將工具結果加入對話歷史
+        messages.extend(tool_messages)
+    
+    print("⚠️ 已達到最大迭代次數，停止執行。")
 
 
 if __name__ == "__main__":
-    print("🌏 啟動 GPT 地圖助理，輸入自然語言問題（輸入 exit 離開）")
+    print("🌏 啟動 GPT 地圖助理，支援多步驟函數呼叫（輸入 exit 離開）")
+    print("\n📋 範例問題：")
+    print("  • 台北101附近有哪些餐廳？然後告訴我到最近的一間要多久？")
+    print("  • 找出新北市政府的地址，然後計算從台北車站到那裡的距離")
+    print("  • 搜尋台北的咖啡廳，並提供前三間的詳細資訊")
+    
     while True:
         user_input = input("\n🧑 請輸入問題： ")
         if user_input.lower() in ("exit", "quit"):
